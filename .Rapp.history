@@ -1,0 +1,9 @@
+load("/Users/mikmak/CloudStation/private/myProjects/plant.watering.PredictiveModel.R/data.RData")
+ls()
+data
+ls()
+dataRawLog
+getwd()
+write.csv2(dataRawLog,"dataRawLog.csv")
+write.csv(dataRawLog,"dataRawLog1.csv")
+write.csv(dataRawLog,"dataRawLog2.csv")

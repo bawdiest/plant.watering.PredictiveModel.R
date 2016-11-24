@@ -1,0 +1,214 @@
+---
+title: "Blog"
+author: "mikmak"
+date: "10/3/2016"
+output: html_document
+---
+
+
+```{r con.iRig, echo=FALSE}
+library("RMySQL");
+
+# Create DB Connection ----------------------------------------------------
+
+con.iRig <- dbConnect(MySQL(),
+                 user = "read", 
+                 host = "mikmak.cc",
+                 password = "809913", 
+                 db = "iRig");
+
+source('gradientDescentMulti.R')
+
+library('lubridate')
+```
+
+# Mit BigData und AI die Pflanzen bewässern
+## Idee
+## Warum BigData und AI und nicht handelsübliches Steuergerät
+
+Einige würden sich fragen, warum musste ich so komplizierte Anlage bauen und nicht einfach eine handelsübliches Gerät kaufen, der mit einem Feuchtigkeitssensor ausgestattet ist. Hier sind einige Argumente:
+
+- eine sensorgesteuerte Anlage hat meistens keine Internet Anbindung. D.h. wenn ich längere Zeit weg bin und es passiert etwas Unvorgesehnbares, kann ich nicht wissen ob die Anlage noch mit Strom versorgt wird (meine Anlage ist an eine Batterie angeschlossen welche von einem Solar Pannel aufgeladen wird), ob der Feuchtigkeitssensor noch richtig positioniert ist und nicht vom Wind umgeworfen wurde und so falsche Daten an die Steuereinheit sendet. (Es ist mir früher schon passiert).
+
+- Handelsübliche Anlagen sind so programmiert, dass diese zu einem bestimmten Zeitpunkt die Sensortwerte auswerten und entscheiden ob die Pumpe gestartet werden soll oder nicht. Z.B. um 17 Uhr meldet der Sensor, dass die Erde trocken ist und es Wasser braucht. Um 17:05 fängt es zu regnen an. So hat die Anlage umsonst das Wasser und Strom verbraucht.
+
+- Skalleneffekte. Eine an die Cloud angeschlossene Anlage benötigt keinen hochqualitativen (und teueren) Sensor. Beim Bau jeder weieter Anlage sinken die Hardware- und somit die Gesamtkosten.
+
+## Lösung im Detail
+
+### Algorithm
+
+Es gibt grundsätzlich zwei Arten von Algorythmen: 
+
+- Überwachtes Lernen: hier verwendet man historische Daten um den Rechner zu "trainieren" anhand der Input Daten den richtigen Output zu berechnen. z.B. Regressionsanalysen, Neueronale Netze
+
+- Unüberwachtes Lernen: hier lässt man den Rechner die Daten analysieren und gewisse gesetzesmässigkeiten oder Muster zu erkennen. Beispiele sind: Korrelationsanalyse, Clustering. 
+Für mein Vorhaben eignen sich die Algorithmen für überwachtes Lernen am Besten. Dabei habe ich dem Tipp eines Stanford Professors gefolgt und habe mit dem einfachsten von Allen begonnen, mit der linearer Regression.
+
+### Lineare Regression
+Alle Algorithmen vom Typ Überwachtes Lernen kann man in Form einer mathematischer Funktion $y = f(X)$ darstellen, wo X eine oder mehrere Input Variablen sind und y ist die sogenannte Target Variable, also der Wert, den wir voraussagen möchten.
+
+Die mathematische Funktion für die lineare Regression sieht so aus:
+
+$$y = \sum_{i=1}^n (X_i*\Theta_i)$$
+
+Auch hier steht X für Input Variablen, in meinem Fall sind es: Höchsttemperatur in C in den letzten 24 Stunden, durchschnittlicher Luftdruck in den letzten 24 Stunden usw. y ist die Wassermenge in ml, die eine Pflanze aktuell benötigt. Um y zu berechnen, muss man die Input Parameter X mit den Modell Parametern $\theta$ multiplizieren und die Resultate aufsummieren.
+
+Tönt einfach, ist es auch, mann muss nur passende Parameter $\theta$ finden. Man nennt es das Modell trainieren. Dazu verwende ich die "Methode der kleinsten Quadrate".
+
+1. Dabei vergibt man allen $\theta$ Parametern einen Initialwert (i.d.R. 0.1) und 
+2. man berechnet den Zielparameter $y$ für die historischen Daten. Die Summe der Differenzen zwischen dem errechneten Wert $y_{ber}$ und dem wahren historischen Wert $y_{wahr}$ im Quadrat $\sum (\sqrt[2]{(y_{ber} - y_{wahr})^{2}})$ (deswegen Methode der kleinsten Quadrate) ist der korrektur Faktor. 
+3. Danach korrigiert man die Parameter $\theta$ um den Korrektur Faktor. Damit nicht alle Thetas um den selben Wert korrigiert werden, multipliziert man den Korrekturfaktor mit dem jeweiligen Wert $x$. Anschliessend
+4. wiederholt man die Schritte 1-3 x-fach bis der Korrekturfaktor sich nicht mehr wesentlich ändert. In meinem Fall haben 300 Iterationen gereicht.
+
+OK, es ist doch eine zwar richtige, aber doch vereinfachte Erklärung der Methode der kleinsten Quadrate. Wer mehr wissen möchte, empfehle ich den Wikipedia Artikel.
+
+Viele Programmiersprachen der 4. Generation (4GL) entwickelt für die statistische Datenverarbeitung wie R, MATLAB, SPSS usw. bieten die Funktionen zur optimierung der linearen Regressionen bereits in der Standardauslieferung.
+
+In R verwendet man dazu die Funktion $lm()$
+```{r echo=TRUE, eval=FALSE}
+lm(y ~ x + 1)
+```
+### Daten
+
+Gemäss einer Studie von Stanford University sind die Trainings Daten wichtiger, als die Wahl des Algorythumus.
+
+Die Daten kann man entweder selber sammeln, kaufen oder die Daten der öffentlichen Insitutionen verwenden (Stichwort "Open Data").
+
+Für meinen Fall verwende ich 
+- öffentliche Meteo Daten von der MeteoSuisse auf http://www1.ncdc.noaa.gov/pub/data/noaa/ und 
+- den von mir gesammelten Bewässerungslog (wie lange ich an welchem Tag die Pflanzen mit der Gardena Anlage bewässert habe)
+
+Bewässerungslog ist also die Variable $y$
+
+```{r echo=TRUE}
+sql <- paste('SELECT MsgID, msgv1, TmStp FROM sysLog WHERE msgID = "109" AND sysID = "79cf6c22-dcc6-11e5-8e77-00113217113f"')
+query <- dbSendQuery(con.iRig, statement = sql);
+e_pumpLog <- fetch(query)
+dbDisconnect(con.iRig)
+```
+
+```{r echo=TRUE}
+e_pumpLog[3] <- as.POSIXct(e_pumpLog[,3] , origin="1970-01-01")
+t_pumpLog <- e_pumpLog[order(e_pumpLog$TmStp),]
+
+t_pumpLog <- cbind(t_pumpLog, round(t_pumpLog$TmStp, units = "hours"))
+names(t_pumpLog)[ncol(t_pumpLog)] <- "TimeStpRnd"
+
+t_pumpLog <- cbind(t_pumpLog, as.Date(t_pumpLog$TimeStpRnd))
+names(t_pumpLog)[ncol(t_pumpLog)] <- "DateRnd"
+
+t_pumpLog <- aggregate(as.integer(t_pumpLog$msgv1), by=list(DateRnd = t_pumpLog$DateRnd), FUN=sum)
+t_pumpLog <- cbind(t_pumpLog, paste(t_pumpLog$DateRnd, "19:00:00", sep = " "))
+names(t_pumpLog)[ncol(t_pumpLog)] <- "TimeStpRnd"
+t_pumpLog$TimeStpRnd <- parse_date_time(t_pumpLog$TimeStpRnd, c('ymd HMS'))
+
+p_pumpLog <- t_pumpLog
+
+plot(p_pumpLog[, c("TimeStpRnd", "x")], type = "h", col = "darkblue")
+```
+
+#### Wetterdaten einlesen und verarbeiten
+```{r echo=TRUE}
+e_weatherData2014 <- read.csv("~/CloudStation/private/myProjects/plant.watering.PredictiveModel.R/data/shopdwhdata_2YH_WAE.csv", sep=";", stringsAsFactors=FALSE)
+e_weatherData2016 <- read.csv("~/CloudStation/private/myProjects/plant.watering.PredictiveModel.R/data/shopdwhdata_0YH_WAE.csv", sep=";", stringsAsFactors=FALSE)
+
+t_weatherData <- rbind(e_weatherData2014, e_weatherData2016)
+t_weatherData <- cbind(t_weatherData, paste(t_weatherData$date, t_weatherData$time, sep = " "))
+names(t_weatherData)[ncol(t_weatherData)] <- "TimeStp"
+
+t_weatherData$TimeStp <- parse_date_time(t_weatherData$TimeStp, c('dmy HM'))
+
+p_weatherData <- t_weatherData
+plot(p_weatherData[, c("TimeStp", "tre200bx")], type = "l", col="red")
+
+```
+
+#### Datenset vorbereiten
+* Input
+    * Wetter vor 24 Stunden
+    * Wetter vor 48 Stunden
+    * Bewesserungstageszeit (Abend/Morgen, Nacht, Tag)
+    * Wetterveränderung seit 24 Stunden (Temperatur, Luftdruck, Niederschlagsmenge)
+* Output
+    * Wasserkonsum in den nächsten 24 Stunden
+  
+```{r echo=TRUE}
+t_dataSet <- p_pumpLog
+a_weatherData <- cbind(p_weatherData, p_weatherData$TimeStp - hours(3))
+names(a_weatherData)[ncol(a_weatherData)] <- "TimeStp-24"
+a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp - hours(6))
+names(a_weatherData)[ncol(a_weatherData)] <- "TimeStp-27"
+a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp - hours(12))
+names(a_weatherData)[ncol(a_weatherData)] <- "TimeStp-30"
+a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp - hours(18))
+names(a_weatherData)[ncol(a_weatherData)] <- "TimeStp-36"
+a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp - hours(24))
+names(a_weatherData)[ncol(a_weatherData)] <- "TimeStp-42"
+
+t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-24", by.x = "TimeStpRnd", suffixes = c(".m",".24"))
+t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-27", by.x = "TimeStpRnd", suffixes = c(".24",".27"))
+t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-30", by.x = "TimeStpRnd", suffixes = c(".27",".30"))
+t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-36", by.x = "TimeStpRnd", suffixes = c(".30",".36"))
+t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-42", by.x = "TimeStpRnd", suffixes = c(".36",".42"))
+
+# Filter relevant columns
+t_dataSet <- t_dataSet[, c("TimeStpRnd", "x"
+                       , "tre200b0.24", "tre200bn.24", "tre200bx.24", "ure200b0.24", "rre150b0.24", "sre000b0.24", "gre000b0.24",  "fu3010b1.24", "prestab0.24"
+                       , "tre200b0.27", "tre200bn.27", "tre200bx.27", "ure200b0.27", "rre150b0.27", "sre000b0.27", "gre000b0.27",  "fu3010b1.27", "prestab0.27"
+                       , "tre200b0.30", "tre200bn.30", "tre200bx.30", "ure200b0.30", "rre150b0.30", "sre000b0.30", "gre000b0.30",  "fu3010b1.30", "prestab0.30"
+                       , "tre200b0.36", "tre200bn.36", "tre200bx.36", "ure200b0.36", "rre150b0.36", "sre000b0.36", "gre000b0.36",  "fu3010b1.36", "prestab0.36"
+                       )]
+
+t_dataSet <- t_dataSet
+t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% c("TimeStpRnd"))]
+a_dataSet <- as.data.frame(t_dataSet)
+
+y <- a_dataSet$x
+x <- a_dataSet[, !(names(a_dataSet) %in% c("TimeStpRnd", "x"))]
+
+x <- data.matrix(x)
+x[is.na(x)] <- 0
+
+  X <- normalizeMatrix(x);
+  y <- normalizeVector(y);
+X[is.na(X)] <- 0
+model <- lm(y ~ X + 1)
+
+#model$coefficients[is.na(model$coefficients)] <- 0
+#yP <- cbind(1,x) %*% as.vector(data.matrix((model$coefficients)))
+#yP <- predict(model, a_dataSet[, !(names(a_dataSet) %in% c("TimeStpRnd", "x"))])
+
+#View(cbind(t_dataSet$x, yP, t_dataSet$x - yP ))
+
+#View(sum((t_dataSet$x - yP)^2))
+
+View(cbind(model$residuals, model$fitted.values))
+plot(model)
+
+#model <- trainLinearModell(x, as.vector(y))
+  
+  params = list(); 
+  
+  params$xMin <- attributes(X)$xMin;
+  params$xMax <- attributes(X)$xMax;
+  params$xFactor <- attributes(X)$xFactor;
+  
+  params$yMin <- attributes(y)$normalizeMin;
+  params$yMax <- attributes(y)$normalizeMax;
+  params$yFactor <- attributes(y)$yFactor;
+  
+  gD <- gradientDescentMulti(X = X, y = y, alpha = 0.01, num_iters = 100);
+  theta <- gD$theta;
+  
+#  plot(gD$cost, xlab="Iteration", ylab="Error");
+  theta <- replace(theta, is.na(theta), 0)
+  
+  t <- X %*% theta
+  t <- t / params$yFactor
+  t <- t + params$yMin
+  
+  View(cbind(t,a_dataSet$x,a_dataSet$x-t))
+  
+  params$theta <- theta
+```

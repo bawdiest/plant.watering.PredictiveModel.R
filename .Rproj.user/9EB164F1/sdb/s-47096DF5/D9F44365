@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "---\ntitle: \"TestPredictiveModel\"\nauthor: \"mikmak\"\ndate: \"11 September 2016\"\noutput: html_document\n---\n\n# Create Connection to DB\n\n```{r con.iRig con.WeatherDW}\nlibrary(\"RMySQL\");\n\n# Create DB Connection ----------------------------------------------------\n\ncon.iRig <- dbConnect(MySQL(),\n                 user = \"read\", \n                 host = \"mikmak.cc\",\n                 password = \"809913\", \n                 db = \"iRig\");\n\ncon.weatherDW <- dbConnect(MySQL(),\n                 user = \"read\", \n                 host = \"mikmak.cc\",\n                 password = \"809913\", \n                 db = \"weatherDW\");\n```\n\n# Get Data\nFirst get source data from DB, like Weather Log, Pump Log and Prediction Model.\nAll variables have prefix \"e\" indicating it is Entry Layer\n\n```{r echo=FALSE}\n# Get PumpLog\nsql <- paste('SELECT MsgID, msgv1, TmStp FROM sysLog WHERE msgID = \"109\" AND sysID = \"79cf6c22-dcc6-11e5-8e77-00113217113f\"')\nquery <- dbSendQuery(con.iRig, statement = sql)\nePumpLog <- fetch(query, n=-1)\n\n# Get WeatherLog\nquery <- dbSendQuery(con.weatherDW, statement = paste(\"SELECT msgID, msgv1, tmstp FROM log WHERE sysID = '79cf6c22-dcc6-11e5-8e77-00113217113f'\"))\neWeatherLog <- fetch(query, n=-1)\n#return(eWeatherLog)\n\n# Get Predicitive Model\nePredictiveModel <- read.csv(\"data/iRigModel\", sep=\"\")\n\ndbDisconnect(con.iRig)\ndbDisconnect(con.weatherDW)\n\n```\n\n# Clean and Transform Data\nRemove corupted or test data or data not needed for further analysis.\n```{r}\ntWeatherLog <- cbind(eWeatherLog[eWeatherLog$msgID == 801,c(3,2)], \n                     eWeatherLog[eWeatherLog$msgID == 802,2], \n                     eWeatherLog[eWeatherLog$msgID == 820,2],\n                     eWeatherLog[eWeatherLog$msgID == 841,2],\n                     eWeatherLog[eWeatherLog$msgID == 851,2],\n                     eWeatherLog[eWeatherLog$msgID == 102,2],\n                     eWeatherLog[eWeatherLog$msgID == 101,2])\ncolnames(tWeatherLog) <- c(\"TimeStamp\", \"Temperature\", \"Pressure\", \"Humidity\", \"Wind\", \"Rain\", \"DataTimeStamp\", \"Location\")\ntWeatherLog <- tWeatherLog[tWeatherLog$Location == \"WAE\",]\n\ntWeatherLog[,1] <- as.POSIXct(tWeatherLog[,1], origin=\"1970-01-01\")\ntWeatherLog <- cbind(tWeatherLog, as.Date(tWeatherLog[,1]))\n\ntWeatherLog <- tWeatherLog[order(tWeatherLog$TimeStamp),]\n\ncolnames(tWeatherLog) <- c(\"TimeStamp\", \"Temperature\", \"Pressure\", \"Humidity\", \"Wind\", \"Rain\", \"DataTimeStamp\", \"Location\", \"Date\")\n\n```\n\nI started to record weather parameters on 27.7.2016. Therefore the pumpLog before this date is useless\n```{r}\ntPumpLog <- ePumpLog\ntPumpLog[,3] <- as.POSIXct(tPumpLog[,3], origin=\"1970-01-01\")\ntPumpLog <- cbind(ePumpLog, as.Date(tPumpLog[,3]))\nnames(tPumpLog)[ncol(tPumpLog)] <- \"Date\"\ntPumpLog <- tPumpLog[tPumpLog$Date >= min(tWeatherLog$Date),]\n```\n\n\n```{r, echo=FALSE}\nplot(tWeatherLog[, c(\"TimeStamp\", \"Temperature\")], type = \"l\")\n```\n\nYou can also embed plots, for example:\n\n```{r, echo=FALSE}\nplot(cars)\n```\n\nNote that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.\n",
+    "created" : 1475606187575.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "424082308",
+    "id" : "D9F44365",
+    "lastKnownWriteTime" : 1479634324,
+    "last_content_update" : 1479634324970,
+    "path" : "~/CloudStation/private/myProjects/plant.watering.PredictiveModel.R/Test.Predictive.Model.Rmd",
+    "project_path" : "Test.Predictive.Model.Rmd",
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

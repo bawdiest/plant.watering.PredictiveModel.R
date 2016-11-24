@@ -1,0 +1,1 @@
+"0","plot(tWeatherLog[, c(""TimeStamp"", ""Temperature"")], type = ""l"")"

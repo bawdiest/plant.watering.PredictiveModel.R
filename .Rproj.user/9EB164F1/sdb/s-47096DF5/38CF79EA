@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "---\ntitle: \"med-Water-Consumption\"\nauthor: \"mikmak\"\ndate: \"2 September 2016\"\noutput: html_document\n---\n\n## Define Tools\n```{r con.iRig}\nlibrary(\"RMySQL\");\n\n# Create DB Connection ----------------------------------------------------\n\ncon.iRig <- dbConnect(MySQL(),\n                 user = \"read\", \n                 host = \"mikmak.cc\",\n                 password = \"809913\", \n                 db = \"iRig\");\n```\n\n\n## Get Water Refill Log\n```{r}\n\nsql <- paste('SELECT MsgID, msgv1, TmStp FROM sysLog WHERE msgID = \"110\" AND sysID = \"79cf6c22-dcc6-11e5-8e77-00113217113f\"')\n#sql <- paste('SELECT * FROM sysLog WHERE msgID = \"110\" AND sysID = \"79cf6c22-dcc6-11e5-8e77-00113217113f\"')\nquery <- dbSendQuery(con.iRig, statement = sql);\nrefillLog <- fetch(query)\nrefillLog[,3] <- as.Date(as.POSIXct(refillLog[,3], origin=\"1970-01-01\"))\n\nreturn(refillLog)\n\n```\n\n# Repost irrigation before 3AM to previous day\n```{r echo=TRUE}\nsql <- paste('SELECT MsgID, msgv1, TmStp FROM sysLog WHERE msgID = \"109\" AND sysID = \"79cf6c22-dcc6-11e5-8e77-00113217113f\"')\nquery <- dbSendQuery(con.iRig, statement = sql);\npumpLog <- fetch(query     )\npumpLog[3] <- as.POSIXct(pumpLog[,3] , origin=\"1970-01-01\")\n\n\nprint(pumpLog[as.POSIXlt(pumpLog$TmStp)$hour < 6,])\npumpLog[as.POSIXlt(pumpLog$TmStp)$hour < 6,3] <- pumpLog[as.POSIXlt(pumpLog$TmStp)$hour < 6,3] - 16800 #(Less than 6PM belongs to previous day)(16800 = 7h)\nprint(pumpLog)\n\n#//ToDo: Rebook all the logs before 5AM to previous day\n```\n\n## Get Irrigation Log (Less than 3PM belongs to previous day)\n\n```{r echo=TRUE}\npumpLog[,3] <- as.Date(as.POSIXct(pumpLog[,3], origin=\"1970-01-01\"))\npumpLog <- pumpLog[pumpLog$TmStp > \"2016-06-01\",]\n\n\n\nx <- apply(pumpLog, 1, function(x) { #Foreach Day (pumpLog[,3] <- as.Date(as.POSIXct(pumpLog[,3], origin=\"1970-01-01\")))\n  x <- x[3] #It is a Day\n  data <- pumpLog[pumpLog$TmStp == x,] # Get PumpLog for day x\n  sumR <- sum(as.integer(data$msgv1)) #  and sum the Duration (value of msgv1) up \n  r <- (sumR) #and return it as a sum\n  return((r))\n})\n\npumpLog <- cbind(pumpLog, x)\n#print(pumpLog)\n\npumpLog <- unique(pumpLog[, c(\"TmStp\", \"x\")])\n#print(pumpLog)\n\npumpLog[,1] <- as.Date(pumpLog[,1])\n\nreturn(pumpLog)\n\n```\n\n## Sum Irrigation Time between Refill entries\n\n```{r}\n\nirrigationInSeconds <- pumpLog[pumpLog$TmStp >= \"2016-07-28\" & pumpLog$TmStp < \"2016-09-01\",]\nirrigationInSeconds <- sum(irrigationInSeconds[,2])\nprint(irrigationInSeconds)\n\npumpLperSecond <- 300 / irrigationInSeconds # Liters per Second\nprint(pumpLperSecond)\npumpLperMinute <- 300 / (irrigationInSeconds / 60) #Liters per Minute\nprint(pumpLperMinute)\n\n```\n",
+    "created" : 1475357608495.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1785728033",
+    "id" : "38CF79EA",
+    "lastKnownWriteTime" : 1475357612,
+    "last_content_update" : 0,
+    "path" : "~/CloudStation/private/myProjects/plant.watering.PredictiveModel.R/getMediumWaterConsumption.Rmd",
+    "project_path" : "getMediumWaterConsumption.Rmd",
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

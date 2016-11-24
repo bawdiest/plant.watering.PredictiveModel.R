@@ -1,0 +1,91 @@
+---
+title: "med-Water-Consumption"
+author: "mikmak"
+date: "2 September 2016"
+output: html_document
+---
+
+## Define Tools
+```{r con.iRig}
+library("RMySQL");
+
+# Create DB Connection ----------------------------------------------------
+
+con.iRig <- dbConnect(MySQL(),
+                 user = "read", 
+                 host = "mikmak.cc",
+                 password = "809913", 
+                 db = "iRig");
+```
+
+
+## Get Water Refill Log
+```{r}
+
+sql <- paste('SELECT MsgID, msgv1, TmStp FROM sysLog WHERE msgID = "110" AND sysID = "79cf6c22-dcc6-11e5-8e77-00113217113f"')
+#sql <- paste('SELECT * FROM sysLog WHERE msgID = "110" AND sysID = "79cf6c22-dcc6-11e5-8e77-00113217113f"')
+query <- dbSendQuery(con.iRig, statement = sql);
+refillLog <- fetch(query)
+refillLog[,3] <- as.Date(as.POSIXct(refillLog[,3], origin="1970-01-01"))
+
+return(refillLog)
+
+```
+
+# Repost irrigation before 3AM to previous day
+```{r echo=TRUE}
+sql <- paste('SELECT MsgID, msgv1, TmStp FROM sysLog WHERE msgID = "109" AND sysID = "79cf6c22-dcc6-11e5-8e77-00113217113f"')
+query <- dbSendQuery(con.iRig, statement = sql);
+pumpLog <- fetch(query     )
+pumpLog[3] <- as.POSIXct(pumpLog[,3] , origin="1970-01-01")
+
+
+print(pumpLog[as.POSIXlt(pumpLog$TmStp)$hour < 6,])
+pumpLog[as.POSIXlt(pumpLog$TmStp)$hour < 6,3] <- pumpLog[as.POSIXlt(pumpLog$TmStp)$hour < 6,3] - 16800 #(Less than 6PM belongs to previous day)(16800 = 7h)
+print(pumpLog)
+
+#//ToDo: Rebook all the logs before 5AM to previous day
+```
+
+## Get Irrigation Log (Less than 3PM belongs to previous day)
+
+```{r echo=TRUE}
+pumpLog[,3] <- as.Date(as.POSIXct(pumpLog[,3], origin="1970-01-01"))
+pumpLog <- pumpLog[pumpLog$TmStp > "2016-06-01",]
+
+
+
+x <- apply(pumpLog, 1, function(x) { #Foreach Day (pumpLog[,3] <- as.Date(as.POSIXct(pumpLog[,3], origin="1970-01-01")))
+  x <- x[3] #It is a Day
+  data <- pumpLog[pumpLog$TmStp == x,] # Get PumpLog for day x
+  sumR <- sum(as.integer(data$msgv1)) #  and sum the Duration (value of msgv1) up 
+  r <- (sumR) #and return it as a sum
+  return((r))
+})
+
+pumpLog <- cbind(pumpLog, x)
+#print(pumpLog)
+
+pumpLog <- unique(pumpLog[, c("TmStp", "x")])
+#print(pumpLog)
+
+pumpLog[,1] <- as.Date(pumpLog[,1])
+
+return(pumpLog)
+
+```
+
+## Sum Irrigation Time between Refill entries
+
+```{r}
+
+irrigationInSeconds <- pumpLog[pumpLog$TmStp >= "2016-07-28" & pumpLog$TmStp < "2016-09-01",]
+irrigationInSeconds <- sum(irrigationInSeconds[,2])
+print(irrigationInSeconds)
+
+pumpLperSecond <- 300 / irrigationInSeconds # Liters per Second
+print(pumpLperSecond)
+pumpLperMinute <- 300 / (irrigationInSeconds / 60) #Liters per Minute
+print(pumpLperMinute)
+
+```

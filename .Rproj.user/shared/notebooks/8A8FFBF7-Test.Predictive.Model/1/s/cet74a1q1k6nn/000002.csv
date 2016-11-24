@@ -1,0 +1,5 @@
+"0","tPumpLog <- ePumpLog"
+"0","tPumpLog[,3] <- as.POSIXct(tPumpLog[,3], origin=""1970-01-01"")"
+"0","tPumpLog <- cbind(ePumpLog, as.Date(tPumpLog[,3]))"
+"0","names(tPumpLog)[ncol(tPumpLog)] <- ""Date"""
+"0","tPumpLog <- tPumpLog[tPumpLog$Date >= min(tWeatherLog$Date),]"
