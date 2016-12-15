@@ -1,0 +1,151 @@
+﻿<html>
+<head>
+<link rel="stylesheet" type="text/css" href="KxStyle.css"><script language="JavaScript" type="text/javascript">
+<!--
+function fabs( a ) { if(a<0) return -a; return a; }
+
+function doublecmp( a, b ) {
+	if( a == b ) return 0;
+	else return 1;
+}
+
+function doublesegcmp( iX, iXStart, iEqualStart, iXEnd, iEqualEnd ) {
+	if (iX < iXStart) return -2;
+	else if (iX == iXStart) {
+		if (iEqualStart) return 0;
+		else return -1;
+	}
+	else {
+		if (iX < iXEnd) return 0;
+		else if (iX == iXEnd) {
+			if (iEqualEnd) return 0;
+			else return 1;
+		}
+		else {
+			return 2;
+		}
+	}
+}
+
+
+function cover_0_2( form ) {
+	lValue = 0;
+	lValue = document.forms[ form ].input0_23.value;
+	if( ! ( ( lValue > -0.5 && lValue <= 4.7999999999999998 )  ) ) return 0;
+	lValue = document.forms[ form ].input0_11.value;
+	if( ! ( ( lValue > 9.4000000000000004 && lValue <= 17.600000000000001 )  || ( lValue > 23.0 && lValue <= 49.299999999999997 )  || ( document.forms[ form ].input0_11.value == "" ) ) ) return 0;
+	lValue = document.forms[ form ].input0_9.value;
+	if( ! ( ( lValue >= 0.0 && lValue <= 5.0 )  || ( lValue > 22.0 && lValue <= 68.0 )  ) ) return 0;
+	lValue = document.forms[ form ].input0_24.value;
+	if( ! ( ( lValue > -1.8 && lValue <= -1.3999999999999999 )  || ( lValue > -0.69999999999999896 && lValue <= 5.5999999999999996 )  || ( document.forms[ form ].input0_24.value == "" ) ) ) return 0;
+	return 1;
+}
+
+function cover_0_3( form ) {
+	lValue = 0;
+	lValue = document.forms[ form ].input0_6.value;
+	if( ! ( ( lValue >= 39.100000000000001 && lValue <= 60.200000000000003 )  ) ) return 0;
+	lValue = document.forms[ form ].input0_13.value;
+	if( ! ( ( lValue >= 12.4 && lValue <= 16.300000000000001 )  || ( lValue > 17.800000000000001 && lValue <= 22.0 )  || ( lValue > 23.5 && lValue <= 27.199999999999999 )  || ( document.forms[ form ].input0_13.value == "" ) ) ) return 0;
+	return 1;
+}
+
+function cover_0_1( form ) {
+	lValue = 0;
+	lValue = document.forms[ form ].input0_6.value;
+	if( ! ( ( lValue > 60.200000000000003 && lValue <= 90.700000000000003 )  || ( document.forms[ form ].input0_6.value == "" ) ) ) return 0;
+	lValue = document.forms[ form ].input0_25.value;
+	if( ! ( ( lValue >= -5.4000000000000004 && lValue <= 1.1000000000000001 )  || ( lValue > 2.8999999999999999 && lValue <= 6.7000000000000002 )  || ( document.forms[ form ].input0_25.value == "" ) ) ) return 0;
+	lValue = document.forms[ form ].input0_20.value;
+	if( ! ( ( lValue >= 0.69999999999999996 && lValue <= 11.9 )  || ( document.forms[ form ].input0_20.value == "" ) ) ) return 0;
+	return 1;
+}
+
+function computeScore0( form ) {
+	score = 0;
+	if ( 1 == cover_0_2( form ) ) {
+		score = 2;
+	}
+	else if ( 1 == cover_0_3( form ) ) {
+		score = 3;
+	}
+	else if ( 1 == cover_0_1( form ) ) {
+		score = 1;
+	}
+	else score = 4;
+	document.forms[ form ].kc_x_resultArea.value = score;
+}
+
+// -->
+</script>
+</head>
+<body>
+<form ID="APPLY">
+<table class="outer" cellpadding="5" cellspacing="0" border="1" width="50%">
+<tr class="line3"><td width="40%"><b>Model</b></td><td><b>Transform</b></td></tr>
+<tr class="line2"><td>x_a_dataSet</td><td>Kxen.SmartSegmenter</td></tr/>
+</table><br/>
+<table class="outer" cellpadding="5" cellspacing="0" border="1" width="50%">
+<tr class="line3"><td width="40%"><b>Variable</b></td><td><b>Value</b></font></td></tr>
+<tr class="line1"><td>PumpDurationLast24h</td><td align="Left"><input style="width:100%" type="text" name="input0_0"value="278" /><br/>
+</td></tr>
+<tr class="line2"><td>tre200b0.x</td><td align="Left"><input style="width:100%" type="text" name="input0_1"value="20.501960784313734" /><br/>
+</td></tr>
+<tr class="line1"><td>tre200bn.x</td><td align="Left"><input style="width:100%" type="text" name="input0_2"value="19.764705882352942" /><br/>
+</td></tr>
+<tr class="line2"><td>tre200bx.x</td><td align="Left"><input style="width:100%" type="text" name="input0_3"value="21.190196078431367" /><br/>
+</td></tr>
+<tr class="line1"><td>ure200b0.x</td><td align="Left"><input style="width:100%" type="text" name="input0_4"value="67.70392156862745" /><br/>
+</td></tr>
+<tr class="line2"><td>rre150b0.x</td><td align="Left"><input style="width:100%" type="text" name="input0_5"value="0.10980392156862742" /><br/>
+</td></tr>
+<tr class="line1"><td>sre000b0.x</td><td align="Left"><input style="width:100%" type="text" name="input0_6"value="11" /><br/>
+</td></tr>
+<tr class="line2"><td>gre000b0.x</td><td align="Left"><input style="width:100%" type="text" name="input0_7"value="22" /><br/>
+</td></tr>
+<tr class="line1"><td>fu3010b0.x</td><td align="Left"><input style="width:100%" type="text" name="input0_8"value="6.9803921568627443" /><br/>
+</td></tr>
+<tr class="line2"><td>fu3010b1.x</td><td align="Left"><input style="width:100%" type="text" name="input0_9"value="14.321568627450981" /><br/>
+</td></tr>
+<tr class="line1"><td>prestab0.x</td><td align="Left"><input style="width:100%" type="text" name="input0_10"value="961.75098039215698" /><br/>
+</td></tr>
+<tr class="line2"><td>tre200b0.y</td><td align="Left"><input style="width:100%" type="text" name="input0_11"value="19.952941176470588" /><br/>
+</td></tr>
+<tr class="line1"><td>tre200bn.y</td><td align="Left"><input style="width:100%" type="text" name="input0_12"value="19.121568627450976" /><br/>
+</td></tr>
+<tr class="line2"><td>tre200bx.y</td><td align="Left"><input style="width:100%" type="text" name="input0_13"value="20.727450980392156" /><br/>
+</td></tr>
+<tr class="line1"><td>ure200b0.y</td><td align="Left"><input style="width:100%" type="text" name="input0_14"value="67.360784313725475" /><br/>
+</td></tr>
+<tr class="line2"><td>rre150b0.y</td><td align="Left"><input style="width:100%" type="text" name="input0_15"value="0.2372549019607843" /><br/>
+</td></tr>
+<tr class="line1"><td>sre000b0.y</td><td align="Left"><input style="width:100%" type="text" name="input0_16"value="10" /><br/>
+</td></tr>
+<tr class="line2"><td>gre000b0.y</td><td align="Left"><input style="width:100%" type="text" name="input0_17"value="23" /><br/>
+</td></tr>
+<tr class="line1"><td>fu3010b0.y</td><td align="Left"><input style="width:100%" type="text" name="input0_18"value="6.3176470588235309" /><br/>
+</td></tr>
+<tr class="line2"><td>fu3010b1.y</td><td align="Left"><input style="width:100%" type="text" name="input0_19"value="14.264705882352942" /><br/>
+</td></tr>
+<tr class="line1"><td>prestab0.y</td><td align="Left"><input style="width:100%" type="text" name="input0_20"value="962.35490196078399" /><br/>
+</td></tr>
+<tr class="line2"><td>t_dataSet$tre200b0.y - t_dataSet$tre200b0.x</td><td align="Left"><input style="width:100%" type="text" name="input0_21"value="-0.54901960784313752" /><br/>
+</td></tr>
+<tr class="line1"><td>t_dataSet$tre200bn.y - t_dataSet$tre200bn.x</td><td align="Left"><input style="width:100%" type="text" name="input0_22"value="-0.64313725490196083" /><br/>
+</td></tr>
+<tr class="line2"><td>t_dataSet$tre200bx.y - t_dataSet$tre200bx.x</td><td align="Left"><input style="width:100%" type="text" name="input0_23"value="-0.46274509803921571" /><br/>
+</td></tr>
+<tr class="line1"><td>t_dataSet$ure200b0.y - t_dataSet$ure200b0.x</td><td align="Left"><input style="width:100%" type="text" name="input0_24"value="-0.34313725490196223" /><br/>
+</td></tr>
+<tr class="line2"><td>t_dataSet$rre150b0.y - t_dataSet$rre150b0.x</td><td align="Left"><input style="width:100%" type="text" name="input0_25"value="0.12745098039215683" /><br/>
+</td></tr>
+<tr class="line1"><td>t_dataSet$prestab0.y - t_dataSet$prestab0.x</td><td align="Left"><input style="width:100%" type="text" name="input0_26"value="0.60392156862744295" /><br/>
+</td></tr>
+</table>
+<br/><table class="outer" cellpadding="5" cellspacing="0" border="1" width="50%">
+<tr class="line3"><td width="40%"><b>Target</b></font></td><td><b>Value</b></td></tr>
+<tr class="line2"><td><a href="javascript:computeScore0( 'APPLY' )">kc_x</a></td><td align="Left"><input type="text" style="width:100%" name="kc_x_resultArea"/></td></tr>
+</table>
+</form>
+</body>
+</html>

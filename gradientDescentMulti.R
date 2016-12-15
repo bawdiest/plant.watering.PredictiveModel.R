@@ -6,28 +6,60 @@ computeCostMulti <- function(X, y, theta) {
   m <- length(y);
   X <- data.matrix(X);
   J <- X %*% (theta);
-  J <- ((t((J) - y ) %*% (J - y  ))) / (2*m);
+  #J <- ((t((J) - y ) %*% (J - y  ))) / (2*m);
   #J <- ((t((X %*% theta) - y ) %*% ((X %*% theta) - y  ))) / (m);
+  J <- ((sum((J-y)^2)))/(0.5 * m)
   return(J)
 }
+
+# gradientDescentMulti <- function(X, y, alpha, num_iters) {
+#   m <- length(y); # number of training examples
+#   X <- data.matrix(X);
+#   theta = data.matrix(rep(0.1,ncol(X)));
+#   costH <- 0.1;
+#   
+#   for(iter in 1:num_iters) {
+#     cost <- computeCostMulti(X,y,theta); #Get Error
+#     factor <- (alpha/m);
+#     htheta <- X %*% theta; #Compute Cost for each record
+#     correctionFactor <- t(X) %*% (htheta - y); #Compute Error relative to each feature (Some features contribute to the total error more than others)
+#     correctionFactor <- correctionFactor * factor; #Relativate Error to Learning factor
+#     
+#     theta <- theta - correctionFactor; #Correct theta
+#     costH[iter] <- cost;
+#   }
+#   
+#   r <- list(theta = theta, cost = costH);
+#   return(r);
+# }
 
 gradientDescentMulti <- function(X, y, alpha, num_iters) {
   m <- length(y); # number of training examples
   X <- data.matrix(X);
-  theta = data.matrix(rep(0.1,ncol(X)));
+  #theta = data.matrix(rep(0.1,ncol(X)));
+  theta <- data.matrix(runif(ncol(X),min = 0.1, max = 0.9))
+  theta <- data.matrix(rep(0,ncol(X)))
   costH <- 0.1;
-  
+
   for(iter in 1:num_iters) {
     cost <- computeCostMulti(X,y,theta); #Get Error
     factor <- (alpha/m);
-    htheta <- X %*% theta; #Compute Cost for each record
-    correctionFactor <- t(X) %*% (htheta - y); #Compute Error relative to each feature (Some features contribute to the total error more than others)
-    correctionFactor <- correctionFactor * factor; #Relativate Error to Learning factor
-    
-    theta <- theta - correctionFactor; #Correct theta
+    htheta <- X %*% theta;
+
+    correctionX <- t(X) %*% (htheta - y);
+    #correctionFactor <- (correctionX * theta) * factor;
+    correctionFactor <- (correctionX) * factor;
+    #factor <-  factor * cost; #Error by Learning Rate
+    #f <- rep(as.numeric(factor), nrow(X)); # Multiplicate Error Rate to be able to vectorize function
+    #nF <- t(X) %*% data.matrix(f); # Compute Error for each variable. (There are variables which influence the error more than others)
+    #factror <- (factor) %*% t(X);
+
+    theta <- theta - correctionFactor;
     costH[iter] <- cost;
+
+    #if (computeCostMulti(X,y,theta) > cost) break
   }
-  
+
   r <- list(theta = theta, cost = costH);
   return(r);
 }
@@ -100,7 +132,8 @@ polyFeatures <- function(X, degree) {
   for(j in 1:c) {
     for (i in 2:degree) {
       X <- cbind(X, X[,j] ^ i)
-      X <- cbind(X, X[,j] ^ 1/i)
+      names(X)[ncol(X)] <- paste(names(X)[j],degree, sep = "*", collapse = "")
+      X[is.na(X)] <- 0
     }
   }
   return(X)
@@ -136,32 +169,7 @@ polyFeatures <- function(X, degree) {
 # #   return(r);
 # # }
 # 
-# gradientDescentMulti <- function(X, y, alpha, num_iters) {
-#   m <- length(y); # number of training examples
-#   X <- data.matrix(X);
-#   theta = data.matrix(rep(0.1,ncol(X)));
-#   costH <- 0.1;
-#   
-#   for(iter in 1:num_iters) {
-#     cost <- computeCostMulti(X,y,theta); #Get Error
-#     factor <- (alpha/m);
-#     htheta <- X %*% theta;
-#     correctionFactor <- t(X) %*% (htheta - y);
-#     correctionFactor <- correctionFactor * factor;
-#     #factor <-  factor * cost; #Error by Learning Rate
-#     #f <- rep(as.numeric(factor), nrow(X)); # Multiplicate Error Rate to be able to vectorize function
-#     #nF <- t(X) %*% data.matrix(f); # Compute Error for each variable. (There are variables which influence the error more than others)
-#     #factror <- (factor) %*% t(X);
-#     
-#     theta <- theta - correctionFactor;
-#     costH[iter] <- cost;
-#     
-#     #if (computeCostMulti(X,y,theta) > cost) break 
-#   }
-#   
-#   r <- list(theta = theta, cost = costH);
-#   return(r);
-# }
+
 
 
 X <- matrix(c(1,1,1,0.5,0.5,0.5,0.1,0.1,0.1), nrow = 3, ncol =3);

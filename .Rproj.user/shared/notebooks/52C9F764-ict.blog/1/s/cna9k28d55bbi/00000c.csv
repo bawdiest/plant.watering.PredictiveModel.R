@@ -1,8 +1,0 @@
-"0","e_weatherData2014 <- read.csv(""~/CloudStation/private/myProjects/plant.watering.PredictiveModel.R/data/shopdwhdata_2YH_WAE.csv"", sep="";"", stringsAsFactors=FALSE)"
-"0","e_weatherData2016 <- read.csv(""~/CloudStation/private/myProjects/plant.watering.PredictiveModel.R/data/shopdwhdata_0YH_WAE.csv"", sep="";"", stringsAsFactors=FALSE)"
-"0","t_weatherData <- rbind(e_weatherData2014, e_weatherData2016)"
-"0","t_weatherData <- cbind(t_weatherData, paste(t_weatherData$date, t_weatherData$time, sep = "" ""))"
-"0","names(t_weatherData)[ncol(t_weatherData)] <- ""TimeStp"""
-"0","t_weatherData$TimeStp <- parse_date_time(t_weatherData$TimeStp, c('dmy HM'))"
-"0","p_weatherData <- t_weatherData"
-"0","plot(p_weatherData[, c(""TimeStp"", ""tre200bx"")], type = ""l"", col=""red"")"

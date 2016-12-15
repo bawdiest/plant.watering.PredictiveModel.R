@@ -1,8 +1,11 @@
 ---
 title: "Blog"
 author: "mikmak"
-date: "10/3/2016"
-output: html_document
+date: "13/12/2016"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
 ---
 
 
@@ -24,9 +27,12 @@ library('lubridate')
 
 # Mit BigData und AI die Pflanzen bewässern
 ## Idee
+
+Ein Algorithmus muss vorhersagen können wieviel Wasser meine Balkonpflanzen in den nächsten 24 Stunden brauchen werden.
+
 ## Warum BigData und AI und nicht handelsübliches Steuergerät
 
-Einige würden sich fragen, warum musste ich so komplizierte Anlage bauen und nicht einfach eine handelsübliches Gerät kaufen, der mit einem Feuchtigkeitssensor ausgestattet ist. Hier sind einige Argumente:
+Warum so komplizierte Anlage bauen und nicht einfach eine handelsübliches Gerät kaufen, der mit einem Feuchtigkeitssensor ausgestattet ist. Hier sind einige Argumente:
 
 - eine sensorgesteuerte Anlage hat meistens keine Internet Anbindung. D.h. wenn ich längere Zeit weg bin und es passiert etwas Unvorgesehnbares, kann ich nicht wissen ob die Anlage noch mit Strom versorgt wird (meine Anlage ist an eine Batterie angeschlossen welche von einem Solar Pannel aufgeladen wird), ob der Feuchtigkeitssensor noch richtig positioniert ist und nicht vom Wind umgeworfen wurde und so falsche Daten an die Steuereinheit sendet. (Es ist mir früher schon passiert).
 
@@ -69,6 +75,7 @@ In R verwendet man dazu die Funktion $lm()$
 ```{r echo=TRUE, eval=FALSE}
 lm(y ~ x + 1)
 ```
+
 ### Daten
 
 Gemäss einer Studie von Stanford University sind die Trainings Daten wichtiger, als die Wahl des Algorythumus.
@@ -79,34 +86,54 @@ Für meinen Fall verwende ich
 - öffentliche Meteo Daten von der MeteoSuisse auf http://www1.ncdc.noaa.gov/pub/data/noaa/ und 
 - den von mir gesammelten Bewässerungslog (wie lange ich an welchem Tag die Pflanzen mit der Gardena Anlage bewässert habe)
 
-Bewässerungslog ist also die Variable $y$
+Meinen Bewässerungslog habe ich mit der Variable $y$ bezeichnet.
 
-```{r echo=TRUE}
+```{r echo=FALSE}
 sql <- paste('SELECT MsgID, msgv1, TmStp FROM sysLog WHERE msgID = "109" AND sysID = "79cf6c22-dcc6-11e5-8e77-00113217113f"')
 query <- dbSendQuery(con.iRig, statement = sql);
 e_pumpLog <- fetch(query)
 dbDisconnect(con.iRig)
 ```
 
-```{r echo=TRUE}
+
+```{r echo=FALSE}
+# Derive Time Characteristics ---------------------------------------------
 e_pumpLog[3] <- as.POSIXct(e_pumpLog[,3] , origin="1970-01-01")
 t_pumpLog <- e_pumpLog[order(e_pumpLog$TmStp),]
-
 t_pumpLog <- cbind(t_pumpLog, round(t_pumpLog$TmStp, units = "hours"))
 names(t_pumpLog)[ncol(t_pumpLog)] <- "TimeStpRnd"
-
 t_pumpLog <- cbind(t_pumpLog, as.Date(t_pumpLog$TimeStpRnd))
 names(t_pumpLog)[ncol(t_pumpLog)] <- "DateRnd"
 
+# Fill missing logs with zeroes in 2014 (For 2016 there are record --------
+minDate <- min(t_pumpLog$DateRnd)
+maxDate <- max(t_pumpLog$DateRnd[year(t_pumpLog$DateRnd) == 2014])
+missingValues <- data.frame("DateRnd" = seq(from = as.Date(minDate), to = as.Date(maxDate), by = "days")
+                 , "msgv1" = 0)
+t_pumpLog <- rbind(t_pumpLog[, c("DateRnd", "msgv1")], missingValues)
+
+# Calculate the sum by day and set pumping time to 07:00 PM ---------------
 t_pumpLog <- aggregate(as.integer(t_pumpLog$msgv1), by=list(DateRnd = t_pumpLog$DateRnd), FUN=sum)
 t_pumpLog <- cbind(t_pumpLog, paste(t_pumpLog$DateRnd, "19:00:00", sep = " "))
 names(t_pumpLog)[ncol(t_pumpLog)] <- "TimeStpRnd"
 t_pumpLog$TimeStpRnd <- parse_date_time(t_pumpLog$TimeStpRnd, c('ymd HMS'))
 
+# Rename the Result Field -------------------------------------------------
+names(t_pumpLog)[names(t_pumpLog) == "x"] <- "y"
+
+# Remove Standard Values --------------------------------------------------
+#t_pumpLog <- t_pumpLog[year(t_pumpLog[,"DateRnd"]) == "2014", ]
+t_pumpLog <- t_pumpLog[!t_pumpLog[,"y"]==0,] #Remove standard Value 
+t_pumpLog <- t_pumpLog[!t_pumpLog[,"y"]==480,] #Remove standard Value 
+
+# Write Data to Propagation Layer -----------------------------------------
 p_pumpLog <- t_pumpLog
 
-plot(p_pumpLog[, c("TimeStpRnd", "x")], type = "h", col = "darkblue")
+# Display the Result ------------------------------------------------------
+plot(p_pumpLog[, c("TimeStpRnd", "y")], type = "h", col = "darkblue")
+print(summary((p_pumpLog[,"y"])))
 ```
+
 
 #### Wetterdaten einlesen und verarbeiten
 ```{r echo=TRUE}
@@ -120,8 +147,10 @@ names(t_weatherData)[ncol(t_weatherData)] <- "TimeStp"
 t_weatherData$TimeStp <- parse_date_time(t_weatherData$TimeStp, c('dmy HM'))
 
 p_weatherData <- t_weatherData
-plot(p_weatherData[, c("TimeStp", "tre200bx")], type = "l", col="red")
 
+# Output --------------------------------------------------------------------
+plot(p_weatherData[, c("TimeStp", "tre200bx")], type = "l", col="blue")
+print(summary(p_weatherData))
 ```
 
 #### Datenset vorbereiten
@@ -134,81 +163,111 @@ plot(p_weatherData[, c("TimeStp", "tre200bx")], type = "l", col="red")
     * Wasserkonsum in den nächsten 24 Stunden
   
 ```{r echo=TRUE}
+# Create DataSet --------------------------------------------
 t_dataSet <- p_pumpLog
-a_weatherData <- cbind(p_weatherData, p_weatherData$TimeStp - hours(3))
+lv_pumpDurationInLast24h <- apply(t_dataSet, 1, function(x) {
+  date <- as.Date(x["DateRnd"]) - days(1)
+
+  data <- p_pumpLog[p_pumpLog$DateRnd == date,"x"]
+  
+  if(length(data) == 0) data = 0 else data = data
+  
+  return(data)
+})
+
+t_dataSet <- cbind(t_dataSet, unlist(lv_pumpDurationInLast24h))
+names(t_dataSet)[ncol(t_dataSet)] <- "PumpDurationLast24h"
+
+
+# a_weatherData <- cbind(p_weatherData, p_weatherData$TimeStp + hours(0))
+a_weatherData <- cbind(p_weatherData, p_weatherData$TimeStp)
 names(a_weatherData)[ncol(a_weatherData)] <- "TimeStp-24"
-a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp - hours(6))
+a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp + hours(24))
 names(a_weatherData)[ncol(a_weatherData)] <- "TimeStp-27"
-a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp - hours(12))
+a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp + hours(36))
 names(a_weatherData)[ncol(a_weatherData)] <- "TimeStp-30"
-a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp - hours(18))
+a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp + hours(42))
 names(a_weatherData)[ncol(a_weatherData)] <- "TimeStp-36"
-a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp - hours(24))
-names(a_weatherData)[ncol(a_weatherData)] <- "TimeStp-42"
+ a_weatherData <- cbind(a_weatherData, p_weatherData$TimeStp + hours(48))
+ names(a_weatherData)[ncol(a_weatherData)] <- "TimeStp-42"
+ 
+ # Get Sums and Means
+ 
+ a_sumsANDmeans <- apply(t_dataSet, 1, function(x) {
+  lv_date <- as.POSIXct(x["TimeStpRnd"]) - days(1)
+  lv_date_24h <- as.POSIXct(x["TimeStpRnd"]) - days(2)
 
-t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-24", by.x = "TimeStpRnd", suffixes = c(".m",".24"))
-t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-27", by.x = "TimeStpRnd", suffixes = c(".24",".27"))
-t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-30", by.x = "TimeStpRnd", suffixes = c(".27",".30"))
-t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-36", by.x = "TimeStpRnd", suffixes = c(".30",".36"))
-t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-42", by.x = "TimeStpRnd", suffixes = c(".36",".42"))
+  lv_d <- a_weatherData[a_weatherData$TimeStp >= lv_date_24h & a_weatherData$TimeStp <= lv_date,] # Get weather Data for last 48 hours
+  
+  lv_y <- mean(lv_d$tre200b0)
+  lv_y <- cbind(lv_y, mean(lv_d$tre200bn))
+  lv_y <- cbind(lv_y, mean(lv_d$tre200bx))
+  lv_y <- cbind(lv_y, mean(lv_d$ure200b0))
+  lv_y <- cbind(lv_y, sum(lv_d$rre150b0))
+  lv_y <- cbind(lv_y, mean(lv_d$prestab0))
+  lv_y <- cbind(lv_y, 1) #Add column with ones to replace it in the next step with dates
+  lv_y[ncol(lv_y)] <- as.POSIXct(lv_date, origin="1970-01-01", tz="GMT" )
 
-# Filter relevant columns
-t_dataSet <- t_dataSet[, c("TimeStpRnd", "x"
-                       , "tre200b0.24", "tre200bn.24", "tre200bx.24", "ure200b0.24", "rre150b0.24", "sre000b0.24", "gre000b0.24",  "fu3010b1.24", "prestab0.24"
-                       , "tre200b0.27", "tre200bn.27", "tre200bx.27", "ure200b0.27", "rre150b0.27", "sre000b0.27", "gre000b0.27",  "fu3010b1.27", "prestab0.27"
-                       , "tre200b0.30", "tre200bn.30", "tre200bx.30", "ure200b0.30", "rre150b0.30", "sre000b0.30", "gre000b0.30",  "fu3010b1.30", "prestab0.30"
-                       , "tre200b0.36", "tre200bn.36", "tre200bx.36", "ure200b0.36", "rre150b0.36", "sre000b0.36", "gre000b0.36",  "fu3010b1.36", "prestab0.36"
-                       )]
+  return(lv_y)
+})
+ a_sumsANDmeans <- as.data.frame(t(unlist(a_sumsANDmeans)))
+ a_sumsANDmeans[,ncol(a_sumsANDmeans)] <- as.POSIXct(a_sumsANDmeans[,ncol(a_sumsANDmeans)], origin = "1970-01-01", tz = "GMT") + hours(2)
+ names(a_sumsANDmeans) <- c("tre200b0Mean", "tre200bnMean", "tre200bxMean", "ure200b0Mean", "rre150b0Sum", "prestab0Mean", "V7")
 
-t_dataSet <- t_dataSet
+#t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-24", by.x = "TimeStpRnd", suffixes = c(".m",".24"))
+t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-24", by.x = "TimeStpRnd")
+t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-27", by.x = "TimeStpRnd")
+
+t_dataSet <- merge(x = t_dataSet, y = a_sumsANDmeans, by.y = "V7", by.x = "TimeStp-24", all.x = TRUE, all.y = TRUE)
+
+# Drop unneccessairy variables --------------------------------------------
+
+#columnsToDrop <- names(t_dataSet) %in% grep("[.y]$", names(t_dataSet), value=TRUE)
+#t_dataSet <- t_dataSet[,!columnsToDrop]
 t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% c("TimeStpRnd"))]
-a_dataSet <- as.data.frame(t_dataSet)
+t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% grep("^time*", names(t_dataSet), value=TRUE))]
+t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% grep("^date*", names(t_dataSet), value=TRUE))]
+t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% grep("^stn*", names(t_dataSet), value=TRUE))]
+t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% grep("^fu*", names(t_dataSet), value=TRUE))]
+t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% grep("^TimeStp*", names(t_dataSet), value=TRUE))]
+t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% grep("^dkl*", names(t_dataSet), value=TRUE))]
+t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% c("DateRnd"))]
 
-y <- a_dataSet$x
-x <- a_dataSet[, !(names(a_dataSet) %in% c("TimeStpRnd", "x"))]
+# Prepare DataSet for machine learning --------------------------------------------
+t_dataSet <- na.omit(t_dataSet)
 
-x <- data.matrix(x)
-x[is.na(x)] <- 0
+a_dataSet <- data.matrix(t_dataSet)
+a_dataSet <- as.data.frame(a_dataSet)
 
-  X <- normalizeMatrix(x);
-  y <- normalizeVector(y);
-X[is.na(X)] <- 0
-model <- lm(y ~ X + 1)
+a_dataSet <- polyFeatures(a_dataSet,3)
+a_dataSet <- a_dataSet[, !(names(t_dataSet) %in% grep("^x*2", names(a_dataSet), value=TRUE))] #No X's in dataset!!!
 
-#model$coefficients[is.na(model$coefficients)] <- 0
-#yP <- cbind(1,x) %*% as.vector(data.matrix((model$coefficients)))
-#yP <- predict(model, a_dataSet[, !(names(a_dataSet) %in% c("TimeStpRnd", "x"))])
+ # Train models --------------------------------------------
+ model <- lm(`y` ~ . - `y*3` - `y*3.1` + 1, data = a_dataSet)
+ #model <- lm(`x` ~ prestab0Mean +1, data = a_dataSet)
 
-#View(cbind(t_dataSet$x, yP, t_dataSet$x - yP ))
+# Output --------
+d <- predict(model,a_dataSet)
+d <- cbind(d,a_dataSet$y)
+d <- as.data.frame(d)
+names(d) <- c("Predicted", "Real")
+plot(d, pch = 16, cex = 0.8, col = "blue")
+abline(lm(a_dataSet$y ~ predict(model)), col="red")
 
-#View(sum((t_dataSet$x - yP)^2))
+summary(model)
+```
 
-View(cbind(model$residuals, model$fitted.values))
-plot(model)
+```{r echo=TRUE}
+#View(cbind(predict(model,a_dataSet),a_dataSet$y))
+```
+#### Analyse des Models
+```{r echo=TRUE}
+# diagnostic plots 
+#layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page 
+#plot(model)
+```
 
-#model <- trainLinearModell(x, as.vector(y))
-  
-  params = list(); 
-  
-  params$xMin <- attributes(X)$xMin;
-  params$xMax <- attributes(X)$xMax;
-  params$xFactor <- attributes(X)$xFactor;
-  
-  params$yMin <- attributes(y)$normalizeMin;
-  params$yMax <- attributes(y)$normalizeMax;
-  params$yFactor <- attributes(y)$yFactor;
-  
-  gD <- gradientDescentMulti(X = X, y = y, alpha = 0.01, num_iters = 100);
-  theta <- gD$theta;
-  
-#  plot(gD$cost, xlab="Iteration", ylab="Error");
-  theta <- replace(theta, is.na(theta), 0)
-  
-  t <- X %*% theta
-  t <- t / params$yFactor
-  t <- t + params$yMin
-  
-  View(cbind(t,a_dataSet$x,a_dataSet$x-t))
-  
-  params$theta <- theta
+#### Wie die Daten wirklich passen
+```{r echo=TRUE}
+
 ```
