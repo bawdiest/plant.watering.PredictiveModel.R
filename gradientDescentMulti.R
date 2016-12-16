@@ -1,3 +1,7 @@
+
+
+
+
 # Functions ---------------------------------------------------------------
 
 computeCostMulti <- function(X, y, theta) {
@@ -132,7 +136,7 @@ polyFeatures <- function(X, degree) {
   for(j in 1:c) {
     for (i in 2:degree) {
       X <- cbind(X, X[,j] ^ i)
-      names(X)[ncol(X)] <- paste(names(X)[j],degree, sep = "*", collapse = "")
+      names(X)[ncol(X)] <- paste(names(X)[j],degree, sep = "P", collapse = "")
       X[is.na(X)] <- 0
     }
   }

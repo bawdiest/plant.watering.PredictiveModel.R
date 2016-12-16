@@ -243,16 +243,23 @@ a_dataSet <- polyFeatures(a_dataSet,3)
 a_dataSet <- a_dataSet[, !(names(t_dataSet) %in% grep("^x*2", names(a_dataSet), value=TRUE))] #No X's in dataset!!!
 
  # Train models --------------------------------------------
- model <- lm(`y` ~ . - `y*3` - `y*3.1` + 1, data = a_dataSet)
- #model <- lm(`x` ~ prestab0Mean +1, data = a_dataSet)
+sample <- sample.int(nrow(a_dataSet), nrow(a_dataSet)*0.9) #nicht weniger als 90%!!!
+a_dataSetTrain <- a_dataSet[sample,]
+ model <- lm(`y` ~ . + 1, data = a_dataSetTrain)
 
 # Output --------
-d <- predict(model,a_dataSet)
-d <- cbind(d,a_dataSet$y)
-d <- as.data.frame(d)
-names(d) <- c("Predicted", "Real")
-plot(d, pch = 16, cex = 0.8, col = "blue")
-abline(lm(a_dataSet$y ~ predict(model)), col="red")
+ a_dataSetTest <- a_dataSet[-c(sample),-c(1)]
+ a_dataSetTest <- cbind(rep(1,nrow(a_dataSetTest)), a_dataSetTest)
+test <- predict(model, newdata = a_dataSetTest)
+test <- cbind(test,a_dataSet[-c(sample),c(1)])
+train <- predict(model)
+train <- cbind(train,a_dataSet[c(sample),c(1)])
+#d <- as.data.frame(d)
+#names(d) <- c("Predicted", "Real")
+
+plot(test[,1], test[,2], pch = 16, cex = 0.8, col = "blue")
+plot(train[,1], train[,2], pch = 16, cex = 0.8, col = "blue")
+
 
 summary(model)
 ```
@@ -267,7 +274,3 @@ summary(model)
 #plot(model)
 ```
 
-#### Wie die Daten wirklich passen
-```{r echo=TRUE}
-
-```
