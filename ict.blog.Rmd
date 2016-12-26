@@ -152,16 +152,17 @@ t_weatherData$TimeStp <- parse_date_time(t_weatherData$TimeStp, c('dmy HM'))
 p_weatherData <- t_weatherData
 
 # Output --------------------------------------------------------------------
-plot(p_weatherData[, c("TimeStp", "tre200bx")], type = "l", col="grey")
+plot(p_weatherData[, c("TimeStp", "tre200bx")], type = "l", col="red")
 print(summary(p_weatherData))
 ```
 
 #### Datenset vorbereiten
 * Input
-    * Wetter vor 24 Stunden
-    * Wetter vor 48 Stunden
-    * Bewesserungstageszeit (Abend/Morgen, Nacht, Tag)
-    * Wetterveränderung seit 24 Stunden (Temperatur, Luftdruck, Niederschlagsmenge)
+    * Wetter vor 24 Stunden, "act" (Temperatur in C, Niederschlag, Sonnenschein, Wind Geschwidigkeit, Luftdruck)
+    * Wetter vor 48 Stunden, "pst" (Temperatur in C, Niederschlag, Sonnenschein, Wind Geschwidigkeit, Luftdruck)
+    * Wetterveränderung in den letzten 24 Stunden, "D" (Temperatur in C, Niederschlag, Sonnenschein, Wind Geschwidigkeit, Luftdruck)
+    * Mittelwerte zwischen den letzten 24 und 48 Stunden, "S" (Temperatur in C, Niederschlag, Sonnenschein, Wind Geschwidigkeit, Luftdruck)
+    * Bewesserungstageszeit, "P24h"
 * Output
     * Wasserkonsum in den nächsten 24 Stunden
     
@@ -181,10 +182,9 @@ lv_pumpDurationInLast24h <- apply(t_dataSet, 1, function(x) {
 })
 a_pumpDurationInLast24h <- as.data.frame((unlist(t(lv_pumpDurationInLast24h))))
 a_pumpDurationInLast24h[,ncol(a_pumpDurationInLast24h)] <- as.POSIXct(a_pumpDurationInLast24h[,ncol(a_pumpDurationInLast24h)], origin = "1970-01-01", tz = "GMT") + hours(2)
-names(a_pumpDurationInLast24h) <- c("P24h","TimeStpP24h")
+names(a_pumpDurationInLast24h) <- c("P24h","Date")
 
-plot(a_pumpDurationInLast24h[, c("TimeStpP24h", "P24h")], type = "h", col = "grey")
-#lv_test <- merge(t_dataSet, lv_pumpDurationInLast24h, by.x = "TimeStpRnd", by.y = "TimeStpP24h", all.x = TRUE)
+plot(a_pumpDurationInLast24h[, c("Date", "P24h")], type = "h", col = "grey")
 ```
 
 ```{r echo=TRUE}
@@ -210,23 +210,19 @@ a_weatherData <- p_weatherData
 })
  a_sumsANDmeans <- as.data.frame(t(unlist(a_sumsANDmeans)))
  a_sumsANDmeans[,ncol(a_sumsANDmeans)] <- as.POSIXct(a_sumsANDmeans[,ncol(a_sumsANDmeans)], origin = "1970-01-01", tz = "GMT") + hours(2)
- names(a_sumsANDmeans) <- c("tre200b0Mean", "tre200bnMean", "tre200bxMean", "ure200b0Mean", "rre150b0Sum", "prestab0Mean", "V7")
+ names(a_sumsANDmeans) <- c("tre200b0S", "tre200bnS", "tre200bxS", "ure200b0S", "rre150b0S", "prestab0S", "Date")
  
- plot( a_sumsANDmeans[, c("V7", "tre200bxMean")], type = "l", col="grey")
+ plot( a_sumsANDmeans[, c("Date", "tre200bxS")], type = "l", col="grey")
  
 ``` 
  
 ```{r echo=TRUE}
 # Merge together PumpDuration and WeatherData ------ 
-#t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp-24", by.x = "TimeStpRnd", suffixes = c(".m",".24"))
 t_dataSet <- merge(t_dataSet, a_weatherData, by.y = "TimeStp", by.x = "TimeStpRnd")
-t_dataSet <- merge(x = t_dataSet, y = a_sumsANDmeans, by.y = "V7", by.x = "TimeStpRnd", all.x = TRUE, all.y = TRUE)
-t_dataSet <- merge(x = t_dataSet, y = a_pumpDurationInLast24h, by.y = "TimeStpP24h", by.x = "TimeStpRnd", all.x = TRUE, all.y = TRUE)
+t_dataSet <- merge(x = t_dataSet, y = a_sumsANDmeans, by.y = "Date", by.x = "TimeStpRnd", all.x = TRUE, all.y = TRUE)
+t_dataSet <- merge(x = t_dataSet, y = a_pumpDurationInLast24h, by.y = "Date", by.x = "TimeStpRnd", all.x = TRUE, all.y = TRUE)
 
 # Drop unneccessairy variables --------------------------------------------
-
-#columnsToDrop <- names(t_dataSet) %in% grep("[.y]$", names(t_dataSet), value=TRUE)
-#t_dataSet <- t_dataSet[,!columnsToDrop]
 t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% c("TimeStpRnd"))]
 t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% grep("^time*", names(t_dataSet), value=TRUE))]
 t_dataSet <- t_dataSet[, !(names(t_dataSet) %in% grep("^date*", names(t_dataSet), value=TRUE))]

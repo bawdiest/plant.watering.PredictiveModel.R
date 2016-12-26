@@ -4,6 +4,9 @@ getRecentWeatherData <- function () {
 
 
 
+
+
+
 # Create DB Connection ----------------------------------------------------
 
 con <- dbConnect(MySQL(),
